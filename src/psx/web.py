@@ -64,7 +64,9 @@ class DataReader:
 
     def download(self, symbol: str, date: date):
         session = self.session
-        post = {"month": date.month, "year": date.year, "symbol": symbol}
+        # Use month=0, year=0 to get all historical data for the symbol
+        # The new PSX API requires string "0" instead of numeric month/year for all data
+        post = {"month": "0", "year": "0", "symbol": symbol}
         with session.post(self.__history, data=post) as response:
             data = parser(response.text, features="html.parser")
             data = self.toframe(data)
