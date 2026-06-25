@@ -8,9 +8,11 @@ from typing import Union
 from tqdm import tqdm
 
 import threading
+import logging
 import pandas as pd
-import numpy as np
 import requests
+
+logger = logging.getLogger(__name__)
 
 
 class DataReader:
@@ -74,21 +76,35 @@ class DataReader:
         session = self.session
         # month=0, year=0 asks the PSX API for the symbol's complete history.
         post = {"month": "0", "year": "0", "symbol": symbol}
-        with session.post(self.__history, data=post) as response:
+        with session.post(self.__history, data=post, timeout=30) as response:
             parsed = parser(response.text, features="html.parser")
         return self.toframe(parsed)
 
     def toframe(self, data):
         stocks = defaultdict(list)
         rows = data.select("tr")
+        dropped = 0
 
         for row in rows:
             cols = [col.getText() for col in row.select("td")]
+            # Skip malformed rows: header rows have <th> (no <td>), and
+            # partial data rows would misalign columns if zipped as-is.
+            if len(cols) != len(self.headers):
+                dropped += 1
+                continue
+
+            try:
+                cols[0] = datetime.strptime(cols[0], "%b %d, %Y")
+            except ValueError:
+                # Unparseable date (e.g. empty cell) — drop the whole row.
+                dropped += 1
+                continue
 
             for key, value in zip(self.headers, cols):
-                if key == "DATE":
-                    value = datetime.strptime(value, "%b %d, %Y")
                 stocks[key].append(value)
+
+        if dropped:
+            logger.warning("Skipped %d malformed/unparseable row(s) from PSX response", dropped)
 
         return pd.DataFrame(stocks, columns=self.headers).set_index("DATE")
 
@@ -114,11 +130,11 @@ class DataReader:
         data = data.rename(columns=str.title)
         # change index label Title to Date
         data.index.name = "Date"
-        # remove non-numeric characters from volume column
-        data.Volume = data.Volume.str.replace(",", "")
-        # coerce each column type to float
+        # coerce each column type to float; non-numeric cells (e.g. "-" on a
+        # no-trades day) become NaN instead of raising.
         for column in data.columns:
-            data[column] = data[column].str.replace(",", "").astype(np.float64)
+            cleaned = data[column].astype(str).str.replace(",", "", regex=False)
+            data[column] = pd.to_numeric(cleaned, errors="coerce")
         return data
 
 

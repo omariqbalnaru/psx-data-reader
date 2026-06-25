@@ -34,9 +34,10 @@ setup(
     package_dir={'': 'src'},                     # Directory of the source code of the package
     packages=find_packages("src"),               # List of all python modules to be installed
     install_requires=[                           # Install other dependencies if any
-        "pandas", 
-        "tqdm", 
+        "pandas",
+        "tqdm",
         "beautifulsoup4",
-        "requests"
+        "requests",
+        "python-dateutil",
     ],
 )
