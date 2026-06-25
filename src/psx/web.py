@@ -1,4 +1,4 @@
-from concurrent.futures import ThreadPoolExecutor, as_completed, _base
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dateutil.relativedelta import relativedelta
 from pandas import DataFrame as container
 from bs4 import BeautifulSoup as parser
@@ -11,8 +11,6 @@ import threading
 import pandas as pd
 import numpy as np
 import requests
-import time
-from pdb import set_trace
 
 
 class DataReader:
@@ -33,44 +31,52 @@ class DataReader:
     def tickers(self):
         return pd.read_json(self.__symbols)
 
-    def get_psx_data(self, symbol: str, dates: list) -> container:
-        data = futures = []
-        
-        with tqdm(total=len(dates), desc="Downloading {}'s Data".format(symbol)) as progressbar:
+    def get_psx_data(self, symbol: str) -> container:
+        """Fetch and clean the complete history for a single symbol.
 
-            with ThreadPoolExecutor(max_workers=6) as executor:
-                for date in dates:
-                    futures.append(executor.submit(self.download, symbol=symbol, date=date))
+        The PSX historical endpoint returns every available row for a symbol in
+        a single request (month=0, year=0), so one download is enough. Any date
+        windowing is applied locally afterwards by ``stocks``.
+        """
+        data = self.download(symbol)
+        if not isinstance(data, container) or data.empty:
+            return data
+        return self.preprocess([data])
 
-                for future in as_completed(futures):
-                    data.append(future.result())
-                    progressbar.update(1)
-            
-            data = [instance for instance in data if isinstance(instance, container)]
-        
-        return self.preprocess(data)
-    
     def stocks(self, tickers: Union[str, list], start: date, end: date) -> container:
         tickers = [tickers] if isinstance(tickers, str) else tickers
-        dates = self.daterange(start, end)
 
-        data = [self.get_psx_data(ticker, dates)[start: end] for ticker in tickers]
+        # One request per symbol returns its full history, so fetch symbols in
+        # parallel and slice to [start, end] locally instead of re-downloading
+        # the same full history once per month.
+        with tqdm(total=len(tickers), desc="Downloading data") as progressbar:
+            with ThreadPoolExecutor(max_workers=max(1, min(6, len(tickers)))) as executor:
+                future_to_ticker = {
+                    executor.submit(self.get_psx_data, ticker): ticker
+                    for ticker in tickers
+                }
+                data = []
+                for future in as_completed(future_to_ticker):
+                    ticker = future_to_ticker[future]
+                    frame = future.result()
+                    progressbar.update(1)
+                    if isinstance(frame, container):
+                        data.append((ticker, frame))
 
         if len(data) == 1:
-            return data[0]
+            return data[0][1][start: end]
 
-        return pd.concat(data, keys=tickers, names=["Ticker", "Date"])
+        frames = [frame[start: end] for _, frame in data]
+        keys = [ticker for ticker, _ in data]
+        return pd.concat(frames, keys=keys, names=["Ticker", "Date"])
 
-
-    def download(self, symbol: str, date: date):
+    def download(self, symbol: str):
         session = self.session
-        # Use month=0, year=0 to get all historical data for the symbol
-        # The new PSX API requires string "0" instead of numeric month/year for all data
+        # month=0, year=0 asks the PSX API for the symbol's complete history.
         post = {"month": "0", "year": "0", "symbol": symbol}
         with session.post(self.__history, data=post) as response:
-            data = parser(response.text, features="html.parser")
-            data = self.toframe(data)
-        return data
+            parsed = parser(response.text, features="html.parser")
+        return self.toframe(parsed)
 
     def toframe(self, data):
         stocks = defaultdict(list)
@@ -78,7 +84,7 @@ class DataReader:
 
         for row in rows:
             cols = [col.getText() for col in row.select("td")]
-        
+
             for key, value in zip(self.headers, cols):
                 if key == "DATE":
                     value = datetime.strptime(value, "%b %d, %Y")
@@ -108,7 +114,7 @@ class DataReader:
         data = data.rename(columns=str.title)
         # change index label Title to Date
         data.index.name = "Date"
-        # remove non-numeric characters from volume column 
+        # remove non-numeric characters from volume column
         data.Volume = data.Volume.str.replace(",", "")
         # coerce each column type to float
         for column in data.columns:
