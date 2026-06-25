@@ -1,5 +1,4 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dateutil.relativedelta import relativedelta
 from pandas import DataFrame as container
 from bs4 import BeautifulSoup as parser
 from collections import defaultdict
@@ -107,19 +106,6 @@ class DataReader:
             logger.warning("Skipped %d malformed/unparseable row(s) from PSX response", dropped)
 
         return pd.DataFrame(stocks, columns=self.headers).set_index("DATE")
-
-    def daterange(self, start: date, end: date) -> list:
-        period = end - start
-        number_of_months = period.days // 30
-        current_date = datetime(start.year, start.month, 1)
-        dates = [current_date]
-
-        for month in range(number_of_months):
-            prev_date = dates[-1]
-            dates.append(prev_date + relativedelta(months=1))
-
-        dates = dates if len(dates) else [start]
-        return dates
 
     def preprocess(self, data: list) -> pd.DataFrame:
         # concatenate each frame to a single dataframe

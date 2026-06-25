@@ -38,6 +38,5 @@ setup(
         "tqdm",
         "beautifulsoup4",
         "requests",
-        "python-dateutil",
     ],
 )
