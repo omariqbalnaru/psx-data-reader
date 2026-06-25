@@ -5,7 +5,7 @@ with open("README.md", encoding="utf-8") as file:
 
 setup(
     name="psx-data-reader",  # This is the name of the package
-    version="0.0.7",  # The initial release version
+    version="0.0.8",  # The initial release version
     license='MIT',  # Chose a license from here: https://help.github.com/articles/licensing-a-repository
     description="Pakistan Stock Exchange's Data Downloader",
     long_description=long_description,
@@ -13,7 +13,7 @@ setup(
     author="Muhammad Amir Abbasi",  # Full name of the author
     author_email='muhammadamir5670@gmail.com',  # Type in your E-Mail
     url='https://github.com/MuhammadAmir5670/psx-data-reader',  # Provide either the link to your github or to your website
-    download_url='https://github.com/MuhammadAmir5670/psx-data-reader/archive/refs/tags/0.0.7.tar.gz',  # I explain this later on
+    download_url='https://github.com/MuhammadAmir5670/psx-data-reader/archive/refs/tags/0.0.8.tar.gz',  # I explain this later on
     keywords=[
         'psx',
         'Pakistan stock exchange',
@@ -26,12 +26,15 @@ setup(
         'Topic :: Software Development :: Build Tools',
         'License :: OSI Approved :: MIT License',  # Again, pick a license
         'Programming Language :: Python :: 3',  # Specify which pyhton versions that you want to support
-        'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.5',
-        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
+        'Programming Language :: Python :: 3.13',
         "Operating System :: OS Independent",
     ],
-    python_requires='>=3',  # Minimum version requirement of the package
+    python_requires='>=3.8',  # Minimum version requirement of the package
     package_dir={'': 'src'},  # Directory of the source code of the package
     packages=find_packages("src"),  # List of all python modules to be installed
     install_requires=[  # Install other dependencies if any
