@@ -8,8 +8,11 @@ from typing import Union
 from tqdm import tqdm
 
 import threading
+import logging
 import pandas as pd
 import requests
+
+logger = logging.getLogger(__name__)
 
 
 class DataReader:
@@ -80,22 +83,28 @@ class DataReader:
     def toframe(self, data):
         stocks = defaultdict(list)
         rows = data.select("tr")
+        dropped = 0
 
         for row in rows:
             cols = [col.getText() for col in row.select("td")]
             # Skip malformed rows: header rows have <th> (no <td>), and
             # partial data rows would misalign columns if zipped as-is.
             if len(cols) != len(self.headers):
+                dropped += 1
                 continue
 
             try:
                 cols[0] = datetime.strptime(cols[0], "%b %d, %Y")
             except ValueError:
                 # Unparseable date (e.g. empty cell) — drop the whole row.
+                dropped += 1
                 continue
 
             for key, value in zip(self.headers, cols):
                 stocks[key].append(value)
+
+        if dropped:
+            logger.warning("Skipped %d malformed/unparseable row(s) from PSX response", dropped)
 
         return pd.DataFrame(stocks, columns=self.headers).set_index("DATE")
 

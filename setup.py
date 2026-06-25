@@ -39,6 +39,5 @@ setup(
         "beautifulsoup4",
         "requests",
         "python-dateutil",
-        "numpy",
     ],
 )
