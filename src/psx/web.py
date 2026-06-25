@@ -86,10 +86,12 @@ class DataReader:
 
         for row in rows:
             cols = [col.getText() for col in row.select("td")]
-            # Skip malformed rows: header rows have <th> (no <td>), and
-            # partial data rows would misalign columns if zipped as-is.
+            # Header rows use <th> (no <td>) — expected, not a data-quality
+            # issue, so skip silently. Partial data rows would misalign
+            # columns if zipped as-is, so drop and count those.
             if len(cols) != len(self.headers):
-                dropped += 1
+                if cols:
+                    dropped += 1
                 continue
 
             try:
