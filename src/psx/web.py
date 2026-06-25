@@ -1,21 +1,20 @@
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from pandas import DataFrame as container
-from bs4 import BeautifulSoup as parser
-from collections import defaultdict
-from datetime import datetime, date
-from typing import Union
-from tqdm import tqdm
-
-import threading
 import logging
+import threading
+from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import date, datetime
+from typing import Union
+
 import pandas as pd
 import requests
+from bs4 import BeautifulSoup as parser
+from pandas import DataFrame as container
+from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 
 
 class DataReader:
-
     headers = ['DATE', 'OPEN', 'HIGH', 'LOW', 'CLOSE', 'VOLUME']
 
     def __init__(self):
@@ -53,8 +52,7 @@ class DataReader:
         with tqdm(total=len(tickers), desc="Downloading data") as progressbar:
             with ThreadPoolExecutor(max_workers=max(1, min(6, len(tickers)))) as executor:
                 future_to_ticker = {
-                    executor.submit(self.get_psx_data, ticker): ticker
-                    for ticker in tickers
+                    executor.submit(self.get_psx_data, ticker): ticker for ticker in tickers
                 }
                 data = []
                 for future in as_completed(future_to_ticker):
@@ -65,9 +63,9 @@ class DataReader:
                         data.append((ticker, frame))
 
         if len(data) == 1:
-            return data[0][1][start: end]
+            return data[0][1][start:end]
 
-        frames = [frame[start: end] for _, frame in data]
+        frames = [frame[start:end] for _, frame in data]
         keys = [ticker for ticker, _ in data]
         return pd.concat(frames, keys=keys, names=["Ticker", "Date"])
 

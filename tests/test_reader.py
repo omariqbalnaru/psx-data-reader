@@ -14,7 +14,6 @@ from bs4 import BeautifulSoup
 
 from psx.web import DataReader
 
-
 # A representative slice of the PSX historical endpoint: a <th> header row,
 # two normal rows, and a no-trades row (VOLUME == "-").
 SAMPLE_HTML = """
